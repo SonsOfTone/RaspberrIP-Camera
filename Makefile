@@ -1,6 +1,6 @@
 #Written By Antoine DUBOST-BULARD 25/10/2014
 
-INCLUDES = -I../Live555/UsageEnvironment/include -I../Live555/groupsock/include -I../Live555/liveMedia/include -I../Live555/BasicUsageEnvironment/include -I$(SDKSTAGE)/opt/vc/include/ -I$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads -I$(SDKSTAGE)/opt/vc/include/interface/vmcs_host/linux -I./
+INCLUDES = -I../live555/UsageEnvironment/include -I../live555/groupsock/include -I../live555/liveMedia/include -I../live555/BasicUsageEnvironment/include -I$(SDKSTAGE)/opt/vc/include/ -I$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads -I$(SDKSTAGE)/opt/vc/include/interface/vmcs_host/linux -I./
 
 COMPILE_OPTS =	$(INCLUDES) -Wall -I. -O2
 C_FLAGS =		$(COMPILE_OPTS)
@@ -16,7 +16,7 @@ all: RaspiVid.c
 	g++ $(CPLUSPLUS_FLAGS) $(INCLUDES) -g -c H264Streamer.cpp -o H264Streamer.o
 	g++ $(CPLUSPLUS_FLAGS) $(INCLUDES) -g -c MyDeviceSource.cpp -o MyDeviceSource.o
 	
-	g++ RaspiCamControl.o RaspiCLI.o RaspiPreview.o RaspiVid.o H264Streamer.o MyDeviceSource.o $(LDFLAGS) -rdynamic ../Live555/liveMedia/libliveMedia.a ../Live555/groupsock/libgroupsock.a ../Live555/BasicUsageEnvironment/libBasicUsageEnvironment.a ../Live555/UsageEnvironment/libUsageEnvironment.a -o RaspberrIPCam
+	g++ RaspiCamControl.o RaspiCLI.o RaspiPreview.o RaspiVid.o H264Streamer.o MyDeviceSource.o $(LDFLAGS) -rdynamic ../live555/liveMedia/libliveMedia.a ../live555/groupsock/libgroupsock.a ../live555/BasicUsageEnvironment/libBasicUsageEnvironment.a ../live555/UsageEnvironment/libUsageEnvironment.a -o RaspberrIPCam
 
 clean:
 	-rm -rf *.o RaspberrIPCam
