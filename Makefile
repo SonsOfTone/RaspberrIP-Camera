@@ -1,12 +1,12 @@
 #Written By Antoine DUBOST-BULARD 25/10/2014
 
-INCLUDES = -I../live555/UsageEnvironment/include -I../live555/groupsock/include -I../live555/liveMedia/include -I../live555/BasicUsageEnvironment/include -I$(SDKSTAGE)/opt/vc/include/ -I$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads -I$(SDKSTAGE)/opt/vc/include/interface/vmcs_host/linux -I./
+INCLUDES = -I../live555/UsageEnvironment/include -I../live555/groupsock/include -I../live555/liveMedia/include -I../live555/BasicUsageEnvironment/include -I$(SDKSTAGE)/opt/vc/include/ -I$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads -I$(SDKSTAGE)/opt/vc/include/interface/vmcs_host/linux -I./ -I/usr/include/libxml2
 
 COMPILE_OPTS =	$(INCLUDES) -Wall -I. -O2
 C_FLAGS =		$(COMPILE_OPTS)
 CPLUSPLUS_FLAGS =	$(COMPILE_OPTS)
 
-LDFLAGS+= -rdynamic -L$(SDKSTAGE)/opt/vc/lib/ -L/home/pi/share/RaspIPCam_0.7/RaspIPCam -lvcos -lmmal -lmmal_core -lmmal_util -lpthread -lbcm_host -lmmal_components
+LDFLAGS+= -rdynamic -L$(SDKSTAGE)/opt/vc/lib/ -L/home/pi/share/RaspIPCam_0.7/RaspIPCam -lvcos -lmmal -lmmal_core -lmmal_util -lpthread -lbcm_host -lmmal_components -lxml2
 
 all: RaspiVid.c
 	gcc $(CFLAGS) $(INCLUDES) -c -o RaspiCamControl.o RaspiCamControl.c 

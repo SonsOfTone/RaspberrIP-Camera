@@ -56,6 +56,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory.h>
 #include <sysexits.h>
 
+#include <libxml/xmlmemory.h>
+#include <libxml/parser.h>
+
 #define VERSION_STRING "v1.3.12"
 
 #include "bcm_host.h"
@@ -113,6 +116,8 @@ static void signal_handler(int signal_number);
 
 // Forward
 typedef struct RASPIVID_STATE_S RASPIVID_STATE;
+
+s_RaspberrIPCam_Config RaspberrIPCam_Config;
 
 /** Struct used to pass information in encoder port userdata to callback
  */
@@ -187,7 +192,6 @@ struct RASPIVID_STATE_S
    int settings;                        /// Request settings from the camera
    int sensor_mode;			/// Sensor mode. 0=auto. Check docs/forum for modes selected by other values.
 };
-
 
 /// Structure to cross reference H264 profile strings against the MMAL parameter equivalent
 static XREF_T  profile_map[] =
@@ -289,6 +293,119 @@ static struct
 
 static int wait_method_description_size = sizeof(wait_method_description) / sizeof(wait_method_description[0]);
 
+void parseVideoParameters(xmlDocPtr doc, xmlNodePtr cur, RASPIVID_STATE *state) {
+
+	xmlChar *key;
+	cur = cur->xmlChildrenNode;
+	int value;
+	while (cur != NULL) {
+		if ((!xmlStrcmp(cur->name, (const xmlChar *)"vres"))) {
+				key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+				state->height = atoi(key);
+				fprintf(stderr,"Vertical Resolution is : %d\n", state->height);
+				xmlFree(key);
+			}
+	    if ((!xmlStrcmp(cur->name, (const xmlChar *)"hres"))) {
+				key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+				state->width = atoi(key);
+				fprintf(stderr,"Horizontal Resolution is : %d\n", state->width);
+				xmlFree(key);
+			}
+		if ((!xmlStrcmp(cur->name, (const xmlChar *)"bitrate"))) {
+				key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+				state->bitrate = atoi(key);
+				fprintf(stderr,"BitRate is : %d\n", state->bitrate);
+				xmlFree(key);
+			}
+		if ((!xmlStrcmp(cur->name, (const xmlChar *)"gopsize"))) {
+				key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+				state->intraperiod = atoi(key);
+				fprintf(stderr,"Gop Size is : %d\n", state->intraperiod);
+				xmlFree(key);
+			}
+		if ((!xmlStrcmp(cur->name, (const xmlChar *)"shutter"))) {
+				key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+				state->camera_parameters.shutter_speed = atoi(key);
+				fprintf(stderr,"Shutter Time is : %d\n", state->camera_parameters.shutter_speed);
+				xmlFree(key);
+			}
+		if ((!xmlStrcmp(cur->name, (const xmlChar *)"fps"))) {
+				key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+				state->framerate = atoi(key);
+				fprintf(stderr,"Frame Rate is : %d\n", state->framerate);
+				xmlFree(key);
+			}
+	cur = cur->next;
+	}
+    return;
+}
+
+void parseNetworkParameters(xmlDocPtr doc, xmlNodePtr cur) {
+
+	xmlChar *key;
+	cur = cur->xmlChildrenNode;
+	int value;
+	while (cur != NULL) {
+		if ((!xmlStrcmp(cur->name, (const xmlChar *)"rtspport"))) {
+				key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+				RaspberrIPCam_Config.Network.RTSP_Port = atoi(key);
+				fprintf(stderr,"RTSP Port is: %d\n", RaspberrIPCam_Config.Network.RTSP_Port);
+				xmlFree(key);
+			}
+	    if ((!xmlStrcmp(cur->name, (const xmlChar *)"rtspurl"))) {
+				key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+				strcpy(RaspberrIPCam_Config.Network.RTSP_URL, key);
+				fprintf(stderr,"RTSP URL is : %s\n", RaspberrIPCam_Config.Network.RTSP_URL);
+				xmlFree(key);
+			}
+	cur = cur->next;
+	}
+    return;
+}
+
+static void LoadConfigFile(RASPIVID_STATE *state)
+{
+
+	xmlDocPtr doc;
+	xmlNodePtr cur;
+	char *docname = "config.xml";
+
+	doc = xmlParseFile(docname);
+	
+	if (doc == NULL ) {
+		fprintf(stderr,"Document not parsed successfully. \n");
+		return;
+	}
+	
+	cur = xmlDocGetRootElement(doc);
+	
+	if (cur == NULL) {
+		fprintf(stderr,"empty document\n");
+		xmlFreeDoc(doc);
+		return;
+	}
+	
+	if (xmlStrcmp(cur->name, (const xmlChar *) "raspberripcamconfig")) {
+		fprintf(stderr,"document of the wrong type, root node != config");
+		xmlFreeDoc(doc);
+		return;
+	}
+	
+	cur = cur->xmlChildrenNode;
+	while (cur != NULL) {
+		if ((!xmlStrcmp(cur->name, (const xmlChar *)"video"))){
+			parseVideoParameters(doc, cur, state);
+		}
+		if ((!xmlStrcmp(cur->name, (const xmlChar *)"network"))){
+			parseNetworkParameters(doc, cur);
+		}
+		 
+	cur = cur->next;
+	}
+	
+	xmlFreeDoc(doc);
+	return;
+}
 
 
 /**
@@ -308,7 +425,7 @@ static void default_status(RASPIVID_STATE *state)
    memset(state, 0, sizeof(RASPIVID_STATE));
 
    // Now set anything non-zero
-   state->timeout = 5000;     // 5s delay before take image
+   state->timeout = 0;     // 5s delay before take image
    state->width = 1920;       // Default to 1080p
    state->height = 1080;
    state->bitrate = 17000000; // This is a decent default bitrate for 1080p
@@ -319,7 +436,7 @@ static void default_status(RASPIVID_STATE *state)
    state->demoInterval = 250; // ms
    state->immutableInput = 1;
    state->profile = MMAL_VIDEO_PROFILE_H264_HIGH;
-   state->waitMethod = WAIT_METHOD_NONE;
+
    state->onTime = 5000;
    state->offTime = 5000;
 
@@ -337,6 +454,8 @@ static void default_status(RASPIVID_STATE *state)
    state->cameraNum = 0;
    state->settings = 0;
    state->sensor_mode = 0;
+   state->waitMethod = WAIT_METHOD_FOREVER;
+   strcpy(RaspberrIPCam_Config.Network.RTSP_URL,"\0");
 
    // Setup preview window defaults
    raspipreview_set_defaults(&state->preview_parameters);
@@ -1756,8 +1875,6 @@ int main(int argc, const char **argv)
 
    bcm_host_init();
    
-   Start_Streaming();
-
    // Register our application with the logging system
    vcos_log_register("RaspiVid", VCOS_LOG_CATEGORY);
 
@@ -1783,13 +1900,18 @@ int main(int argc, const char **argv)
       status = -1;
       exit(EX_USAGE);
    }
+   
+   //Overwrite command line parameters if xml config file found
+   LoadConfigFile(&state);
 
    if (state.verbose)
    {
       fprintf(stderr, "\n%s Camera App %s\n\n", basename(argv[0]), VERSION_STRING);
       dump_status(&state);
    }
-
+   
+   Start_Streaming(RaspberrIPCam_Config.Network.RTSP_URL, RaspberrIPCam_Config.Network.RTSP_Port);
+   
    // OK, we have a nice set of parameters. Now set up our components
    // We have three components. Camera, Preview and encoder.
 

@@ -26,6 +26,14 @@ unsigned int ImageBuffer_Lenght = 0;
 char ImageBuffer[1*1024*1024];
 static struct timeval tm1;
 
+typedef struct
+{
+	unsigned int Port;
+	char * URL;
+}RTSP_Parameters;
+
+RTSP_Parameters RTSP_Params;
+
 static inline void start()
 {
     gettimeofday(&tm1, NULL);
@@ -57,13 +65,6 @@ char GetH264ImageType(char * Buffer)
 	else if((Buffer[0] == 0x00) && (Buffer[1] == 0x00) && (Buffer[2] == 0x00) && (Buffer[3] == 0x01) && (Buffer[4] == 0x25)) return 'I';//I Image Start Code
 	else if((Buffer[0] == 0x00) && (Buffer[1] == 0x00) && (Buffer[2] == 0x00) && (Buffer[3] == 0x01) && (Buffer[4] == 0x21)) return 'P';//P Image Start Code
 	else return 0;
-}
-
-extern "C" void Start_Streaming()
-{
-	//Subscribe to Multicast Group via eth0
-	system("sudo ip route add 224.0.0.0/4 dev eth0");
-	iretThreadRTSP = pthread_create(&pThreadRTSP, NULL, (void *(*)(void *))&ThreadRTSP, NULL);
 }
 
 extern "C" void FeedStreamerAndRecordingManager(char * Buffer, unsigned int BufferSize)
@@ -110,7 +111,7 @@ extern "C" void FeedStreamerAndRecordingManager(char * Buffer, unsigned int Buff
 	}
 }
 
-void ThreadRTSP() {
+void * ThreadRTSP(void * Parameters) {
   // Begin by setting up our usage environment:
   TaskScheduler* scheduler = BasicTaskScheduler::createNew();
   env = BasicUsageEnvironment::createNew(*scheduler);
@@ -128,6 +129,8 @@ void ThreadRTSP() {
 
   const Port rtpPort(rtpPortNum);
   const Port rtcpPort(rtcpPortNum);
+  
+  RTSP_Parameters * RTSP_Params = (RTSP_Parameters *)Parameters;
 
   Groupsock rtpGroupsock(*env, destinationAddress, rtpPort, ttl);
   rtpGroupsock.multicastSendOnly(); // we're a SSM source
@@ -157,13 +160,13 @@ void ThreadRTSP() {
   char * Password = "ADMIN";
   authDB->addUserRecord(Login, Password); */
 
-  RTSPServer* rtspServer = RTSPServer::createNew(*env, 8554/*, authDB*/);
+  RTSPServer* rtspServer = RTSPServer::createNew(*env, RTSP_Params->Port/*, authDB*/);
   if (rtspServer == NULL) {
     *env << "Failed to create RTSP server: " << env->getResultMsg() << "\n";
     exit(1);
   }
   ServerMediaSession* sms
-    = ServerMediaSession::createNew(*env, NULL, NULL,
+    = ServerMediaSession::createNew(*env, RTSP_Params->URL, NULL,
 		   "Session streamed by \"testH264VideoStreamer\"",
 					   True );
   sms->addSubsession(PassiveServerMediaSubsession::createNew(*videoSink, rtcp));
@@ -178,6 +181,16 @@ void ThreadRTSP() {
   play();
 
   env->taskScheduler().doEventLoop(); // does not return
+}
+
+extern "C" void Start_Streaming(char * URL, unsigned int Port)
+{
+	pthread_t ThreadHndl;
+	RTSP_Params.Port = Port;
+	RTSP_Params.URL = URL;
+	//Subscribe to Multicast Group via eth0
+	system("sudo ip route add 224.0.0.0/4 dev eth0");
+	iretThreadRTSP = pthread_create(&ThreadHndl, NULL, (void *(*)(void *))&ThreadRTSP, (void *)&RTSP_Params);
 }
 
 void afterPlaying(void* /*clientData*/) {

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<raspberripcamconfig>
+  <video>
+    <hres>1280</hres>
+    <vres>720</vres>
+    <bitrate>20000000</bitrate>
+	<gopsize>15</gopsize>
+	<shutter>30000</shutter>
+	<fps>30</fps>
+  </video>
+  <network>
+    <rtspport>8554</rtspport>
+    <!--<rtspurl>streamurl</rtspurl>--><!--uncomment and set a value if you want change URL-->
+  </network>
+</raspberripcamconfig>
