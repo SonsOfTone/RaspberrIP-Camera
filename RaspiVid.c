@@ -368,7 +368,7 @@ static void LoadConfigFile(RASPIVID_STATE *state)
 
 	xmlDocPtr doc;
 	xmlNodePtr cur;
-	char *docname = "config.xml";
+	char *docname = "/home/pi/RaspberrIP-Camera/config.xml";
 
 	doc = xmlParseFile(docname);
 	
@@ -1874,6 +1874,9 @@ int main(int argc, const char **argv)
    MMAL_PORT_T *encoder_output_port = NULL;
 
    bcm_host_init();
+   
+   //Let time to finish startup and configure network if launch at startup
+   sleep(2);
    
    // Register our application with the logging system
    vcos_log_register("RaspiVid", VCOS_LOG_CATEGORY);
