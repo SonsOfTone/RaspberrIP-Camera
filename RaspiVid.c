@@ -368,7 +368,7 @@ static void LoadConfigFile(RASPIVID_STATE *state)
 
 	xmlDocPtr doc;
 	xmlNodePtr cur;
-	char *docname = "/home/pi/RaspberrIP-Camera/config.xml";
+	char *docname = "/var/www/config.xml";
 
 	doc = xmlParseFile(docname);
 	
